@@ -37,14 +37,15 @@ func BuildCli() {
 	keyPath := &cli.StringFlag{Name: "keyPath", Usage: "SA key path"}
 	tfConfigPath := &cli.StringFlag{Name: "tfConfigPath", Usage: "Terraform Configuration Directory Path"}
 	zoneFlag := &cli.StringFlag{Name: "zone", Usage: "Cluster Zone  (example: europe-west2-b)"}
+	prefixFlag := &cli.StringFlag{Name: "prefix", Usage: "Cluster name prefix (example: stage-europe-west2-b)"}
 	poolNameFlag := &cli.StringFlag{Name: "pool-name", Usage: "Pool Name"}
 	poolSizeFlag := &cli.StringFlag{Name: "pool-size", Usage: "New Pool Size"}
-	setupEnvironment := setupEnvironmentCmd(providerFlag, projectFlag, environmentFlag, keyPath, dryRunFlag, zoneFlag)
+	setupEnvironment := setupEnvironmentCmd(providerFlag, projectFlag, environmentFlag, keyPath, dryRunFlag, zoneFlag, prefixFlag)
 	dockerSetup := dockerSetupCmd(projectFlag, environmentFlag)
 	dockerBuild := dockerBuildCmd(projectFlag)
 
 	createClusterCmd := createClusterCmd(projectFlag, environmentFlag, dryRunFlag, providerFlag, keyPath,
-		tfConfigPath, zoneFlag)
+		tfConfigPath, zoneFlag, prefixFlag)
 	installHelmCmd := installHelmCmd(projectFlag, environmentFlag)
 	destroyClusterCmd := destroyClusterCmd(projectFlag, environmentFlag, providerFlag, keyPath, tfConfigPath)
 
@@ -328,7 +329,7 @@ func deployAppSetup(projectFlag *cli.StringFlag, environmentFlag *cli.StringFlag
 }
 
 func createClusterCmd(projectFlag *cli.StringFlag, environmentFlag *cli.StringFlag,
-	dryRunFlag *cli.BoolFlag, providerFlag *cli.StringFlag, keyPath *cli.StringFlag, tfConfigPath *cli.StringFlag, zoneFlag *cli.StringFlag) cli.Command {
+	dryRunFlag *cli.BoolFlag, providerFlag *cli.StringFlag, keyPath *cli.StringFlag, tfConfigPath *cli.StringFlag, zoneFlag *cli.StringFlag, prefixFlag *cli.StringFlag) cli.Command {
 	return cli.Command{
 		Name:  "createCluster",
 		Usage: "Create a Kubernetes cluster through Terraform",
@@ -340,6 +341,7 @@ func createClusterCmd(projectFlag *cli.StringFlag, environmentFlag *cli.StringFl
 			keyPath,
 			tfConfigPath,
 			zoneFlag,
+			prefixFlag,
 		},
 		Action: func(c *cli.Context) error {
 			fmt.Printf("Validating flags for createCluster\n")
@@ -348,6 +350,7 @@ func createClusterCmd(projectFlag *cli.StringFlag, environmentFlag *cli.StringFl
 			_ = validateStringFlagPresence("env", c)
 			_ = validateStringFlagPresence("keyPath", c)
 			_ = validateStringFlagPresence("zone", c)
+			_ = validateStringFlagPresence("prefix", c)
 			fmt.Printf("createCluster running with flags\n")
 
 			project := c.String("project")
@@ -357,7 +360,8 @@ func createClusterCmd(projectFlag *cli.StringFlag, environmentFlag *cli.StringFl
 			key := c.String("keyPath")
 			tfConfigPath := c.String("tfConfigPath")
 			zone := c.String("zone")
-			clusterName := project + "-" + env
+			prefix := c.String("prefix")
+			clusterName := prefix + project + "-" + env
 
 			if provider == "gcp" {
 				//Setup ENV Variable with the json credentials
@@ -443,7 +447,7 @@ func installHelmCmd(projectFlag *cli.StringFlag, environmentFlag *cli.StringFlag
 }
 
 func setupEnvironmentCmd(providerFlag *cli.StringFlag, projectFlag *cli.StringFlag, environmentFlag *cli.StringFlag,
-	keyPath *cli.StringFlag, dryRunFlag *cli.BoolFlag, zone *cli.StringFlag) cli.Command {
+	keyPath *cli.StringFlag, dryRunFlag *cli.BoolFlag, zone *cli.StringFlag, prefixFlag *cli.StringFlag) cli.Command {
 
 	return cli.Command{
 		Name:  "setupEnvironment",
@@ -455,6 +459,7 @@ func setupEnvironmentCmd(providerFlag *cli.StringFlag, projectFlag *cli.StringFl
 			keyPath,
 			dryRunFlag,
 			zone,
+			prefixFlag,
 		},
 		Action: func(c *cli.Context) error {
 			fmt.Printf("Validating flags for setupEnvironment\n")
@@ -464,6 +469,7 @@ func setupEnvironmentCmd(providerFlag *cli.StringFlag, projectFlag *cli.StringFl
 			_ = validateStringFlagPresence("project", c)
 			_ = validateStringFlagPresence("keyPath", c)
 			_ = validateStringFlagPresence("zone", c)
+			_ = validateStringFlagPresence("prefix", c)
 
 			providerValue := c.String("provider")
 			project := c.String("project")
@@ -471,8 +477,9 @@ func setupEnvironmentCmd(providerFlag *cli.StringFlag, projectFlag *cli.StringFl
 			keyLocation := c.String("keyPath")
 			dryrun := c.Bool("dry-run")
 			zone := c.String("zone")
+			prefix := c.String("prefix")
 
-			clusterName := project + "-" + env
+			clusterName := prefix + project + "-" + env
 			cluster.SetupProvider(providerValue, zone, clusterName, project, keyLocation, dryrun)
 
 			return nil
